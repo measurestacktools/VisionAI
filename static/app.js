@@ -13,13 +13,19 @@
   const resultBody = $("resultBody"), copyBtn = $("copyBtn"), modelTag = $("modelTag");
   const retryBtn = $("retryBtn"), removeBtn = $("removeBtn");
 
-  const MAX_MB = 10;
+  let MAX_MB = 10;
   const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
   let objectUrl = null;
   let lastAnswer = "";
 
   /* ---------- status ---------- */
   let keySource = null;
+  let statusTimer = null;
+  function pillText(configured, model) {
+    const narrow = window.innerWidth < 560;
+    if (configured) return narrow ? "API connected" : "API connected · " + (model || "ready");
+    return narrow ? "API key missing" : "API key missing — open Settings";
+  }
   async function loadStatus() {
     apiStatus.classList.add("checking");
     apiStatus.classList.remove("ok", "bad");
@@ -28,13 +34,18 @@
       const d = await r.json();
       apiStatus.classList.remove("checking");
       keySource = d.source || null;
+      if (typeof d.max_image_mb === "number" && d.max_image_mb > 0) {
+        MAX_MB = d.max_image_mb;
+        const fl = document.getElementById("formatsLine");
+        if (fl) fl.textContent = "JPG · PNG · WEBP · GIF — up to " + (Number.isInteger(MAX_MB) ? MAX_MB : MAX_MB.toFixed(1)) + "MB";
+      }
       if (d.configured) {
         apiStatus.classList.add("ok");
-        statusText.textContent = "API connected · " + (d.model || "ready");
+        statusText.textContent = pillText(true, d.model);
         statusText.title = d.message || "";
       } else {
         apiStatus.classList.add("bad");
-        statusText.textContent = "API key missing — open Settings";
+        statusText.textContent = pillText(false);
         statusText.title = d.message || "Add your Groq API key via Settings or .env";
       }
       renderKeyState(d);
@@ -44,6 +55,10 @@
       statusText.textContent = "Server unreachable";
     }
   }
+  window.addEventListener("resize", () => {
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(loadStatus, 250);
+  });
 
   /* ---------- settings modal ---------- */
   const settingsBtn = $("settingsBtn"), settingsModal = $("settingsModal");
@@ -272,7 +287,7 @@
     if (!q) { setAskError("Please type a question about the image before analyzing."); question.focus(); return; }
 
     analyzeBtn.disabled = true; show(btnSpinner);
-    document.querySelector(".btn-label").textContent = "Analyzing…";
+    analyzeBtn.querySelector(".btn-label").textContent = "Analyzing…";
     showState("loading"); copyBtn.disabled = true;
 
     try {
@@ -296,7 +311,7 @@
       showState("error");
     } finally {
       analyzeBtn.disabled = false; hide(btnSpinner);
-      document.querySelector(".btn-label").innerHTML = "✦ &nbsp;Analyze image";
+      analyzeBtn.querySelector(".btn-label").innerHTML = "✦ &nbsp;Analyze image";
     }
   }
   analyzeBtn.addEventListener("click", analyze);

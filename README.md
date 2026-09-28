@@ -15,7 +15,7 @@ No database. No frontend framework. No fake responses. Just a clean FastAPI back
 - Live API connection status pill in the header
 - Server-side validation: file type, file size, empty question, image integrity
 - Automatic image downscale/compress so uploads stay fast and within Groq limits
-- API key stays server-side — never exposed to the browser
+- API key stays on your server — typed into your own local page, kept only in server memory or your local `.env`; never in browser storage, never sent back to the browser, never committed to git
 
 ## Requirements
 
@@ -72,7 +72,7 @@ GROQ_API_KEY=gsk_paste_your_key_here
 GROQ_MODEL=qwen/qwen3.8-27b
 ```
 
-> The default model `qwen/qwen3.8-27b` is the current vision-capable model (verified Sept 2026 from https://console.groq.com/docs/vision). If Groq renames models in the future, check https://console.groq.com/docs/models and update `GROQ_MODEL`.
+> The default model `qwen/qwen3.8-27b` is the current vision-capable model (verified from https://console.groq.com/docs/vision). Note Groq lists it as a **preview** model, which means Groq can rename or retire it on short notice — if you ever see a "model was not found" error, check https://console.groq.com/docs/models for the current vision model and update `GROQ_MODEL`.
 
 ## Running the application
 
@@ -83,7 +83,9 @@ uvicorn app:app --reload
 Then open **http://127.0.0.1:8000** in your browser.
 
 - Homepage: `GET /`
-- Health check: `GET /api/status` (shows whether your key is configured)
+- Health check: `GET /api/status` (shows whether your key is configured and where it came from)
+- Save key: `POST /api/key` (JSON `{"key": "..."}` — verified with Groq, kept in server memory only)
+- Remove key: `DELETE /api/key` (forgets the Settings key; falls back to `.env`)
 - Analysis: `POST /api/analyze` (multipart: `image` file + `question` text)
 
 ## How the project works
@@ -121,7 +123,7 @@ Key files:
 - **Bigger uploads:** raise `MAX_IMAGE_MB` in `.env` (keep ≤ 10–15MB; Groq caps image requests at 20MB and base64 inflates size ~33%).
 - **Suggested prompts:** edit the `.chip` buttons in `static/index.html`.
 - **Theme:** tweak the CSS variables at the top of `static/styles.css`.
-- **Port:** set `PORT` in `.env` and run `uvicorn app:app --port 8001 --reload`.
+- **Port:** run `uvicorn app:app --reload --port 8001` (or set `PORT` in `.env` when starting via `python app.py`).
 
 ## Common errors
 
@@ -139,5 +141,5 @@ Key files:
 
 - Your `.env` file contains a **secret API key**. Never share it, never commit it, never paste it into screenshots or videos.
 - `.gitignore` already excludes `.env`. Keep it that way.
-- The key only lives on your server (`app.py`) — the frontend JavaScript never sees it.
+- The Settings-panel key only lives in the server's memory (`app.py`): it is never written to disk, never logged, never stored in the browser, and never sent back to any page. It disappears when the server restarts.
 - If a key ever leaks, delete it at https://console.groq.com/keys and create a new one.

@@ -16,7 +16,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from openai import (
@@ -51,7 +51,7 @@ MAX_SIDE_PX = 1536
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-app = FastAPI(title="VisionAI", version="1.1.0")
+app = FastAPI(title="VisionAI", version="1.1.1")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # In-memory API key entered via the Settings panel in the UI.
@@ -109,6 +109,16 @@ def _friendly_groq_error(exc: Exception) -> tuple[int, str]:
             return 400, (
                 "Groq rejected the image (it may be too large or in an unsupported "
                 "format). Try a JPG/PNG under 10MB and try again."
+            )
+        if status == 413:
+            return 413, (
+                "The image was too large for Groq to process. "
+                "Please use a smaller file (under 10MB) and try again."
+            )
+        if status in (498, 499):
+            return 503, (
+                "Groq is temporarily at capacity and did not process the request. "
+                "Wait a minute and try again — you will not be charged for this."
             )
         if status == 404:
             return 502, (
@@ -249,6 +259,7 @@ def api_delete_key():
 
 @app.post("/api/analyze")
 async def api_analyze(
+    request: Request,
     image: UploadFile | None = File(default=None),
     question: str = Form(default=""),
 ):
@@ -287,6 +298,23 @@ async def api_analyze(
                     )
                 },
             )
+
+    # --- Early size guard: reject giant bodies before reading into memory.
+    # (1MB slack covers multipart framing overhead around the file bytes.)
+    try:
+        content_length = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        content_length = 0
+    if content_length and content_length > MAX_IMAGE_BYTES + 1024 * 1024:
+        return JSONResponse(
+            status_code=413,
+            content={
+                "error": (
+                    f"Image is too large (limit is {MAX_IMAGE_MB:g}MB). "
+                    "Please compress/resize it or choose a smaller file."
+                )
+            },
+        )
 
     # --- Validate size ---
     raw = await image.read()
