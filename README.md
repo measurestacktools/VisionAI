@@ -45,7 +45,17 @@ pip install -r requirements.txt
 3. Click **Create API Key**
 4. Copy the key — it starts with `gsk_...`
 
-## Configuring `.env`
+## Setting your API key (pick either option)
+
+**Option A — Settings panel (easiest, no code):**
+
+1. Run the app and open http://127.0.0.1:8000
+2. Click **Settings** (top right)
+3. Paste your key, click **Save key** — it's verified instantly
+
+The key is kept only in the server's memory: it's never written to disk, never logged, and never shown again. It clears when the server restarts. Use **Remove** in Settings to forget it at any time.
+
+**Option B — `.env` file (permanent):**
 
 ```bash
 # Windows
@@ -117,7 +127,7 @@ Key files:
 
 | Message | What to do |
 |---|---|
-| `No GROQ_API_KEY configured` | You didn't create `.env` yet. Copy `.env.example` → `.env`, paste your key, restart the server. |
+| `No API key configured` | Click **Settings** (top right) and paste your key, or set up `.env` as above. |
 | `Your Groq API key was rejected` | Key is wrong or has extra spaces/quotes. Re-copy from https://console.groq.com/keys. |
 | `Image is too large` | Use a smaller file or compress it (JPG quality 80, max ~2000px wide). |
 | `Unsupported file type` | Only JPG, PNG, WEBP, GIF are accepted. |

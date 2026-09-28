@@ -27,6 +27,7 @@ from openai import (
     RateLimitError,
 )
 from PIL import Image
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -50,17 +51,40 @@ MAX_SIDE_PX = 1536
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-app = FastAPI(title="VisionAI", version="1.0.0")
+app = FastAPI(title="VisionAI", version="1.1.0")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# In-memory API key entered via the Settings panel in the UI.
+# - Takes precedence over the .env key for this server process only.
+# - Never written to disk, never logged, never sent back to the browser.
+# - Cleared when the server restarts (use .env for a permanent key).
+_session_key: str | None = None
+
+
+class KeyPayload(BaseModel):
+    key: str = ""
+
+
+def _effective_key() -> str:
+    """Session key from Settings wins; otherwise the .env key."""
+    return (_session_key or GROQ_API_KEY).strip()
+
+
+def _key_source() -> str | None:
+    if _session_key:
+        return "settings"
+    if GROQ_API_KEY:
+        return "env"
+    return None
 
 
 def _friendly_groq_error(exc: Exception) -> tuple[int, str]:
     """Map SDK / HTTP errors to beginner-friendly messages + status codes."""
     if isinstance(exc, AuthenticationError):
         return 401, (
-            "Your Groq API key was rejected. Open your .env file, check GROQ_API_KEY "
-            "is correct (no extra spaces or quotes), then restart the app. "
-            "Get a free key at https://console.groq.com/keys"
+            "Your Groq API key was rejected. Replace it via Settings (top right) "
+            "or check GROQ_API_KEY in your .env file (no extra spaces or quotes), "
+            "then try again. Get a free key at https://console.groq.com/keys"
         )
     if isinstance(exc, RateLimitError):
         return 429, (
@@ -140,21 +164,87 @@ def home():
 
 @app.get("/api/status")
 def api_status():
-    configured = bool(GROQ_API_KEY)
-    if configured:
-        message = f"Connected — model {GROQ_MODEL} ready."
+    key = _effective_key()
+    source = _key_source()
+    if key:
+        where = "Settings (this session)" if source == "settings" else ".env file"
+        message = f"Connected — model {GROQ_MODEL} ready. Key from {where}."
     else:
         message = (
-            "No GROQ_API_KEY found. Copy .env.example to .env, "
-            "paste your key from https://console.groq.com/keys, then restart the app."
+            "No API key found. Click Settings (top right) to paste your key, "
+            "or copy .env.example to .env and add your key from "
+            "https://console.groq.com/keys, then restart the app."
         )
     return {
         "ok": True,
-        "configured": configured,
+        "configured": bool(key),
+        "source": source,
         "model": GROQ_MODEL,
         "max_image_mb": MAX_IMAGE_MB,
         "message": message,
     }
+
+
+def _verify_key(key: str) -> None:
+    """Raise if the key is rejected. A cheap models-list call verifies it."""
+    client = OpenAI(api_key=key, base_url=GROQ_BASE_URL, timeout=15.0)
+    client.models.list()
+
+
+@app.post("/api/key")
+def api_save_key(payload: KeyPayload):
+    """Save the UI-entered key in server memory after verifying it with Groq."""
+    global _session_key
+    key = (payload.key or "").strip()
+    if not key:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Please paste your Groq API key first."},
+        )
+    try:
+        _verify_key(key)
+    except AuthenticationError:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": (
+                    "That key was rejected by Groq. Check for extra spaces, "
+                    "make sure it starts with gsk_, or create a new one at "
+                    "https://console.groq.com/keys"
+                )
+            },
+        )
+    except APIConnectionError:
+        # Offline — still save; the analyze call will confirm once online.
+        _session_key = key
+        return {
+            "ok": True,
+            "verified": False,
+            "message": (
+                "Key saved, but Groq could not be reached to verify it. "
+                "Check your connection — analysis will confirm the key."
+            ),
+        }
+    except Exception as exc:
+        log.warning("Key verification inconclusive: %s", exc)
+        _session_key = key
+        return {
+            "ok": True,
+            "verified": False,
+            "message": "Key saved. Groq did not confirm it yet — try an analysis.",
+        }
+    _session_key = key
+    return {"ok": True, "verified": True, "message": "API key verified and saved for this session."}
+
+
+@app.delete("/api/key")
+def api_delete_key():
+    """Forget the Settings-entered key (falls back to .env if one exists)."""
+    global _session_key
+    _session_key = None
+    if GROQ_API_KEY:
+        return {"ok": True, "message": "Session key removed. Using the key from your .env file."}
+    return {"ok": True, "message": "Session key removed."}
 
 
 @app.post("/api/analyze")
@@ -222,22 +312,23 @@ async def api_analyze(
     except ValueError as ve:
         return JSONResponse(status_code=400, content={"error": str(ve)})
 
-    # --- API key check ---
-    if not GROQ_API_KEY:
+    # --- API key check (Settings session key wins, .env key is the fallback) ---
+    api_key = _effective_key()
+    if not api_key:
         return JSONResponse(
             status_code=401,
             content={
                 "error": (
-                    "No GROQ_API_KEY configured. Copy .env.example to .env, add your key "
-                    "from https://console.groq.com/keys, then restart the app with: "
-                    "uvicorn app:app --reload"
+                    "No API key configured. Click Settings (top right) to paste your "
+                    "Groq key, or copy .env.example to .env, add your key from "
+                    "https://console.groq.com/keys, then restart the app."
                 )
             },
         )
 
     # --- Call Groq via OpenAI-compatible endpoint ---
     try:
-        client = OpenAI(api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL)
+        client = OpenAI(api_key=api_key, base_url=GROQ_BASE_URL)
         completion = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[

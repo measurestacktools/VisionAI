@@ -116,3 +116,29 @@ textarea:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba
   .panel{padding:18px}
   .actions{flex-direction:column}
 }
+
+/* Header actions + settings */
+.header-actions{display:flex;align-items:center;gap:10px;min-width:0}
+.settings-btn{flex:none}
+.settings-btn svg{flex:none}
+
+/* Modal */
+.modal-backdrop{position:fixed;inset:0;z-index:50;background:rgba(3,5,12,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-backdrop[hidden]{display:none}
+.modal{width:min(480px,100%);background:#0d1326;border:1px solid var(--panel-border);border-radius:20px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:pop .22s ease-out}
+@keyframes pop{from{transform:translateY(10px) scale(.98);opacity:0}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.modal-head h2{margin:0;font-size:18px}
+.modal-sub{margin:0 0 14px;line-height:1.6}
+.key-state{font-size:13px;padding:10px 14px;border-radius:10px;margin-bottom:14px;background:rgba(255,255,255,.04);border:1px solid var(--panel-border);color:var(--muted)}
+.key-state.on{color:#a7f3d0;border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08)}
+.key-state.off{color:#fca5a5;border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.07)}
+.field-label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint);margin:0 0 8px}
+.text-input{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--panel-border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:14px;font-family:ui-monospace,Consolas,monospace;transition:.2s}
+.text-input:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.22)}
+.key-ok{color:#a7f3d0;font-size:13px;margin:10px 2px 0}
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+.modal-actions .btn-primary{flex:1}
+.modal-foot{margin:16px 0 0;line-height:1.6}
+.modal-foot a{color:var(--cyan)}
+.modal-foot code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:6px}

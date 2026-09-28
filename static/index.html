@@ -19,9 +19,15 @@
       </span>
       <span class="brand-text"><strong>VisionAI</strong><em>visual intelligence</em></span>
     </div>
-    <div class="status-pill" id="apiStatus" role="status" aria-live="polite">
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">Checking API…</span>
+    <div class="header-actions">
+      <div class="status-pill" id="apiStatus" role="status" aria-live="polite">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Checking API…</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm settings-btn" id="settingsBtn" aria-haspopup="dialog" aria-label="Open API settings">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
     </div>
   </div>
 </header>
@@ -122,5 +128,30 @@
 </main>
 
 <script src="/static/app.js" defer></script>
+
+<div class="modal-backdrop" id="settingsModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <h2 id="settingsTitle">API Settings</h2>
+      <button type="button" class="btn btn-ghost btn-sm" id="settingsClose" aria-label="Close settings">✕</button>
+    </div>
+    <p class="muted modal-sub">Paste your Groq API key — no <code>.env</code> editing needed. It's verified instantly, kept only in the server's memory, and never shown again.</p>
+    <div class="key-state" id="keyState" role="status">Checking…</div>
+    <form id="keyForm" autocomplete="off">
+      <label class="field-label" for="keyInput">Groq API key</label>
+      <input type="password" id="keyInput" class="text-input" placeholder="gsk_…" autocomplete="off" spellcheck="false" />
+    </form>
+    <p class="field-error" id="keyError" role="alert" hidden></p>
+    <p class="key-ok" id="keyOk" role="status" hidden></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="keySave">
+        <span class="btn-label">Save key</span>
+        <span class="spinner" id="keySpinner" hidden aria-hidden="true"></span>
+      </button>
+      <button type="button" class="btn btn-ghost" id="keyRemove">Remove</button>
+    </div>
+    <p class="muted modal-foot">No key yet? <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Create a free one at console.groq.com/keys</a>. The key clears when the server restarts — put it in <code>.env</code> to keep it permanently.</p>
+  </div>
+</div>
 </body>
 </html>

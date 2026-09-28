@@ -19,27 +19,118 @@
   let lastAnswer = "";
 
   /* ---------- status ---------- */
+  let keySource = null;
   async function loadStatus() {
     apiStatus.classList.add("checking");
+    apiStatus.classList.remove("ok", "bad");
     try {
       const r = await fetch("/api/status");
       const d = await r.json();
       apiStatus.classList.remove("checking");
+      keySource = d.source || null;
       if (d.configured) {
         apiStatus.classList.add("ok");
         statusText.textContent = "API connected · " + (d.model || "ready");
         statusText.title = d.message || "";
       } else {
         apiStatus.classList.add("bad");
-        statusText.textContent = "API key missing — see README";
-        statusText.title = d.message || "Add GROQ_API_KEY to .env";
+        statusText.textContent = "API key missing — open Settings";
+        statusText.title = d.message || "Add your Groq API key via Settings or .env";
       }
+      renderKeyState(d);
     } catch {
       apiStatus.classList.remove("checking");
       apiStatus.classList.add("bad");
       statusText.textContent = "Server unreachable";
     }
   }
+
+  /* ---------- settings modal ---------- */
+  const settingsBtn = $("settingsBtn"), settingsModal = $("settingsModal");
+  const settingsClose = $("settingsClose"), keyInput = $("keyInput");
+  const keySave = $("keySave"), keySpinner = $("keySpinner"), keyRemove = $("keyRemove");
+  const keyState = $("keyState"), keyError = $("keyError"), keyOk = $("keyOk");
+
+  function renderKeyState(d) {
+    if (!d) return;
+    keyState.classList.remove("on", "off");
+    if (d.configured) {
+      keyState.classList.add("on");
+      const where = d.source === "settings"
+        ? "Key active — entered via Settings (this session only)."
+        : "Key active — loaded from your .env file.";
+      keyState.textContent = "✓ " + where + " Model: " + (d.model || "ready") + ".";
+    } else {
+      keyState.classList.add("off");
+      keyState.textContent = "✕ No API key configured yet.";
+    }
+    keyRemove.disabled = keySource !== "settings";
+    keyRemove.title = keySource === "settings"
+      ? "Forget the key entered via Settings"
+      : "There is no Settings key to remove (the .env key, if any, stays)";
+  }
+  function setKeyError(msg) {
+    if (!msg) { hide(keyError); keyError.textContent = ""; return; }
+    keyError.textContent = msg; show(keyError);
+  }
+  function setKeyOk(msg) {
+    if (!msg) { hide(keyOk); keyOk.textContent = ""; return; }
+    keyOk.textContent = msg; show(keyOk);
+  }
+  function openSettings() {
+    setKeyError(""); setKeyOk(""); keyInput.value = "";
+    show(settingsModal);
+    loadStatus();
+    setTimeout(() => keyInput.focus(), 50);
+  }
+  function closeSettings() { hide(settingsModal); settingsBtn.focus(); }
+
+  settingsBtn.addEventListener("click", openSettings);
+  settingsClose.addEventListener("click", closeSettings);
+  settingsModal.addEventListener("click", (e) => { if (e.target === settingsModal) closeSettings(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !settingsModal.hidden) closeSettings();
+  });
+  keyInput.addEventListener("input", () => { setKeyError(""); setKeyOk(""); });
+  $("keyForm").addEventListener("submit", (e) => { e.preventDefault(); keySave.click(); });
+
+  keySave.addEventListener("click", async () => {
+    const key = keyInput.value.trim();
+    setKeyError(""); setKeyOk("");
+    if (!key) { setKeyError("Please paste your Groq API key first."); keyInput.focus(); return; }
+    keySave.disabled = true; show(keySpinner);
+    try {
+      const res = await fetch("/api/key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setKeyError(data.error || ("Could not save the key (HTTP " + res.status + ")."));
+        return;
+      }
+      keyInput.value = "";
+      setKeyOk("✓ " + (data.message || "Key saved."));
+      await loadStatus();
+    } catch {
+      setKeyError("Could not reach the server. Make sure the app is running and try again.");
+    } finally {
+      keySave.disabled = false; hide(keySpinner);
+    }
+  });
+
+  keyRemove.addEventListener("click", async () => {
+    setKeyError(""); setKeyOk("");
+    try {
+      const res = await fetch("/api/key", { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      setKeyOk("✓ " + (data.message || "Key removed."));
+      await loadStatus();
+    } catch {
+      setKeyError("Could not reach the server. Try again.");
+    }
+  });
 
   /* ---------- helpers ---------- */
   function show(el) { el.hidden = false; }
