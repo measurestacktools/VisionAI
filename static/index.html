@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VisionAI — See more in every image</title>
+<meta name="description" content="VisionAI — upload any image, ask questions, and get instant AI-powered visual analysis." />
+<link rel="stylesheet" href="/static/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Ccircle cx='16' cy='14' r='6' fill='none' stroke='white' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='14' r='2.2' fill='white'/%3E%3Cpath d='M7 25l4-4 3 3 4-5 7 6' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+<div class="bg-orbs" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span></div>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="30" height="30"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#lg)"/><circle cx="16" cy="14" r="6" fill="none" stroke="white" stroke-width="2.4"/><circle cx="16" cy="14" r="2.2" fill="white"/><path d="M7 25l4-4 3 3 4-5 7 6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="brand-text"><strong>VisionAI</strong><em>visual intelligence</em></span>
+    </div>
+    <div class="status-pill" id="apiStatus" role="status" aria-live="polite">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Checking API…</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="hero-badge">● Powered by Groq ultra-fast inference</div>
+    <h1>See more in <span class="grad">every image.</span></h1>
+    <p class="lede">Upload any photo, screenshot, or document — ask a question, and VisionAI explains exactly what it sees. Fast, precise, and private: your API key never leaves your server.</p>
+  </section>
+
+  <section class="workspace">
+    <!-- LEFT: upload -->
+    <div class="panel upload-panel">
+      <div class="panel-head"><h2>Image</h2><span class="panel-hint" id="fileMeta">No file selected</span></div>
+
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload an image. Drag and drop or press Enter to browse.">
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" hidden />
+        <div class="dz-empty" id="dzEmpty">
+          <div class="dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.8"/><path d="M21 15l-4.5-4.5L6 21"/></svg>
+          </div>
+          <p class="dz-title">Drag &amp; drop your image here</p>
+          <p class="dz-sub">or</p>
+          <button type="button" class="btn btn-secondary" id="browseBtn">Browse files</button>
+          <p class="dz-formats">JPG · PNG · WEBP · GIF — up to 10MB</p>
+        </div>
+        <div class="dz-preview" id="dzPreview" hidden>
+          <img id="previewImg" alt="Uploaded image preview" />
+          <div class="preview-bar">
+            <div class="preview-info"><strong id="fileName">image.jpg</strong><span id="fileDetails">—</span></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="removeBtn" aria-label="Remove image">✕ Remove</button>
+          </div>
+        </div>
+      </div>
+      <p class="field-error" id="fileError" role="alert" hidden></p>
+    </div>
+
+    <!-- RIGHT: question -->
+    <div class="panel ask-panel">
+      <div class="panel-head"><h2>Ask VisionAI</h2><span class="panel-hint">Be specific for best results</span></div>
+      <label class="sr-only" for="question">Your question about the image</label>
+      <textarea id="question" rows="5" maxlength="2000" placeholder="e.g. Describe this image in detail — what objects, colors, and setting do you see?">Describe this image in detail.</textarea>
+      <div class="char-row"><span id="charCount">0 / 2000</span></div>
+
+      <p class="suggest-label">Try a suggested prompt</p>
+      <div class="chips" role="group" aria-label="Suggested questions">
+        <button type="button" class="chip" data-q="Describe this image in detail — objects, colors, setting, and mood.">Describe this image</button>
+        <button type="button" class="chip" data-q="Read and transcribe all visible text in this image, word for word.">Read visible text</button>
+        <button type="button" class="chip" data-q="Identify the most important objects and details in this image, and explain what is happening.">Important objects &amp; details</button>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="analyzeBtn">
+          <span class="btn-label">✦ &nbsp;Analyze image</span>
+          <span class="spinner" id="btnSpinner" hidden aria-hidden="true"></span>
+        </button>
+        <button type="button" class="btn btn-ghost" id="clearBtn">Clear</button>
+      </div>
+      <p class="field-error" id="askError" role="alert" hidden></p>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="panel result-panel" aria-live="polite">
+    <div class="panel-head">
+      <h2>AI Analysis</h2>
+      <div class="result-tools">
+        <span class="model-tag" id="modelTag" hidden></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="copyBtn" disabled>⧉ Copy</button>
+      </div>
+    </div>
+
+    <div class="result-empty" id="resultEmpty">
+      <div class="empty-icon" aria-hidden="true">◐</div>
+      <p><strong>Your analysis will appear here.</strong></p>
+      <p class="muted">Upload an image, type a question, and press <em>Analyze image</em>.</p>
+    </div>
+
+    <div class="result-loading" id="resultLoading" hidden>
+      <div class="shimmer-lines" aria-hidden="true"><span></span><span></span><span></span><span class="short"></span></div>
+      <p class="loading-text"><span class="pulse-dot"></span> VisionAI is examining your image…</p>
+    </div>
+
+    <div class="result-error" id="resultError" hidden>
+      <div class="error-icon" aria-hidden="true">⚠</div>
+      <p><strong>Something went wrong.</strong></p>
+      <p class="muted" id="errorText"></p>
+      <button type="button" class="btn btn-secondary btn-sm" id="retryBtn">Try again</button>
+    </div>
+
+    <div class="result-body" id="resultBody" hidden></div>
+  </section>
+
+  <footer class="foot">
+    <p>VisionAI runs 100% locally — your images go straight from this page to your own Groq API key. <span class="muted">Never share your <code>.env</code> file.</span></p>
+  </footer>
+</main>
+
+<script src="/static/app.js" defer></script>
+</body>
+</html>
