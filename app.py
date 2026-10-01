@@ -51,7 +51,7 @@ MAX_SIDE_PX = 1536
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-app = FastAPI(title="VisionAI", version="1.1.1")
+app = FastAPI(title="VisionAI", version="1.2.0")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # In-memory API key entered via the Settings panel in the UI.

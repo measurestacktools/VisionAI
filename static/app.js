@@ -169,24 +169,32 @@
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
   function renderMarkdownLite(text) {
-    // Minimal safe renderer: paragraphs, bullets, bold, inline code.
+    // Minimal safe renderer: headings, rules, paragraphs, bullets, bold, inline code.
     const lines = escapeHtml(text).split("\n");
     let html = "", inList = false;
+    const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
     for (const line of lines) {
       const t = line.trim();
-      if (/^([-*•]\s+)/.test(t)) {
+      let m;
+      if (/^---+$/.test(t) || /^\*\*\*+$/.test(t)) {
+        closeList(); html += "<hr>";
+      } else if ((m = t.match(/^(#{1,3})\s+(.*)$/))) {
+        closeList();
+        const lvl = m[1].length;
+        html += "<h" + lvl + ">" + (m[2] || "…") + "</h" + lvl + ">";
+      } else if (/^([-*•]\s+)/.test(t)) {
         if (!inList) { html += "<ul>"; inList = true; }
         html += "<li>" + t.replace(/^([-*•]\s+)/, "") + "</li>";
       } else if (/^\d+\.\s+/.test(t)) {
         if (!inList) { html += "<ul>"; inList = true; }
         html += "<li>" + t.replace(/^\d+\.\s+/, "") + "</li>";
       } else {
-        if (inList) { html += "</ul>"; inList = false; }
+        closeList();
         if (t === "") html += "<br>";
         else html += "<p style='margin:.4em 0'>" + t + "</p>";
       }
     }
-    if (inList) html += "</ul>";
+    closeList();
     return html
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/`(.+?)`/g, "<code>$1</code>");
@@ -216,6 +224,14 @@
     fileMeta.textContent = file.name + " (" + mb.toFixed(2) + " MB)";
     hide(dzEmpty); show(dzPreview);
   }
+
+  // show real pixel dimensions once the preview decodes
+  previewImg.addEventListener("load", () => {
+    const f = previewImg._file;
+    if (!f || !previewImg.naturalWidth) return;
+    const mb = f.size / (1024 * 1024);
+    fileDetails.textContent = mb.toFixed(2) + " MB · " + previewImg.naturalWidth + "×" + previewImg.naturalHeight + " px";
+  });
 
   function clearAll() {
     fileInput.value = "";
@@ -257,6 +273,18 @@
   });
 
   question.addEventListener("input", () => { updateCount(); setAskError(""); });
+  // Ctrl/Cmd+Enter develops the print without reaching for the button
+  question.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); analyze(); }
+  });
+  // paste an image straight from the clipboard (screenshots welcome)
+  document.addEventListener("paste", (e) => {
+    if (settingsModal && !settingsModal.hidden) return; // don't hijack key pastes
+    const items = (e.clipboardData && e.clipboardData.files) || [];
+    for (const f of items) {
+      if (f.type && f.type.startsWith("image/")) { setFile(f); break; }
+    }
+  });
   document.querySelectorAll(".chip").forEach((chip) => {
     chip.addEventListener("click", () => { question.value = chip.dataset.q; updateCount(); question.focus(); });
   });
@@ -306,6 +334,14 @@
       if (data.model) { modelTag.textContent = "◈ " + data.model; show(modelTag); }
       copyBtn.disabled = !lastAnswer;
       showState("body");
+      // bring the fresh print into view (matters on phones / long pages)
+      try {
+        const panel = document.querySelector(".result-panel");
+        const r = panel.getBoundingClientRect();
+        if (r.top < 0 || r.bottom > window.innerHeight) {
+          panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      } catch {}
     } catch {
       errorText.textContent = "Could not reach the server. Make sure the app is running (uvicorn app:app) and try again.";
       showState("error");
