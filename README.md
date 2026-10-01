@@ -123,7 +123,7 @@ Key files:
 - **Bigger uploads:** raise `MAX_IMAGE_MB` in `.env` (keep ≤ 10–15MB; Groq caps image requests at 20MB and base64 inflates size ~33%).
 - **Suggested prompts:** edit the `.chip` buttons in `static/index.html`.
 - **Theme:** tweak the CSS variables at the top of `static/styles.css`.
-- **Port:** run `uvicorn app:app --reload --port 8001` (or set `PORT` in `.env` when starting via `python app.py`).
+- **Port:** run `uvicorn app:app --reload --port 8000` (or set `PORT` in `.env` when starting via `python app.py`).
 
 ## Common errors
 
