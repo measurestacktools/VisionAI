@@ -2,7 +2,14 @@
 
 VisionAI is a polished, ready-to-run **AI image analysis app**. Upload any photo, screenshot, or document, ask a question about it, and get an instant AI-powered visual analysis — running on Groq's ultra-fast inference.
 
-No database. No frontend framework. No fake responses. Just a clean FastAPI backend + a premium dark SaaS interface + your own Groq API key.
+No database. No frontend framework. No fake responses. Just a clean FastAPI backend + a premium dark interface + your own Groq API key.
+
+## Tech stack
+
+- Backend: Python + FastAPI (`app.py`), served with uvicorn
+- AI: Groq vision models via the OpenAI-compatible API (`https://api.groq.com/openai/v1`)
+- Image handling: Pillow validation, server-side downscale/compress, base64 data-URI input
+- Frontend: dependency-free HTML/CSS/vanilla JS in `static/`
 
 ## Features
 
@@ -23,7 +30,7 @@ No database. No frontend framework. No fake responses. Just a clean FastAPI back
 - A free Groq API key (takes ~2 minutes)
 - Internet connection (the AI call goes to Groq's API)
 
-## Installation
+## Setup — installation
 
 ```bash
 cd VisionAI
@@ -125,7 +132,14 @@ Key files:
 - **Theme:** tweak the CSS variables at the top of `static/styles.css`.
 - **Port:** run `uvicorn app:app --reload --port 8000` (or set `PORT` in `.env` when starting via `python app.py`).
 
-## Common errors
+## Limitations
+
+- Single image per request; very large images are downscaled server-side before analysis
+- Answers capped at ~1024 tokens; very small/low-quality images may yield uncertain results
+- English-first prompts; other languages work but less precisely
+- No chat history — each analysis is a single independent request
+
+## Troubleshooting — common errors
 
 | Message | What to do |
 |---|---|
